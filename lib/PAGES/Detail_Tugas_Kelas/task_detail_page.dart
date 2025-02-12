@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:open_file/open_file.dart';  // Add this import
 
 class TaskDetailPage extends StatefulWidget {
   final Map<String, dynamic> task;
   final String className;
-  final Function(Map<String, dynamic>) onTaskUpdated; // Add this
+  final Function(Map<String, dynamic>) onTaskUpdated; 
 
   const TaskDetailPage({
     Key? key,
     required this.task,
     required this.className,
-    required this.onTaskUpdated, // Add this
+    required this.onTaskUpdated, 
   }) : super(key: key);
 
   @override
@@ -19,7 +21,6 @@ class TaskDetailPage extends StatefulWidget {
 }
 
 class _TaskDetailPageState extends State<TaskDetailPage> {
-  final ImagePicker _picker = ImagePicker();
 
   void _showFullImage() {
     Navigator.push(
@@ -50,6 +51,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
   void _editTask() async {
     File? selectedImage = widget.task['image'];
+    PlatformFile? selectedFile = widget.task['file']; // Add this line
     String taskName = widget.task['name'];
     String deadline = widget.task['deadline'];
     String description = widget.task['description'] ?? '';
@@ -65,41 +67,45 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    GestureDetector(
-                      onTap: () async {
-                        final XFile? image = await _picker.pickImage(
-                          source: ImageSource.gallery,
-                        );
-                        if (image != null) {
-                          setState(() {
-                            selectedImage = File(image.path);
-                          });
-                        }
-                      },
-                      child: Container(
-                        height: 100,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.grey),
+                    Container(
+                      height: 70,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey),
+                      ),
+                      child: InkWell(
+                        onTap: () async {
+                          FilePickerResult? result = await FilePicker.platform.pickFiles();
+                          if (result != null) {
+                            setState(() {
+                              selectedFile = result.files.first;
+                              selectedImage = null;
+                            });
+                          }
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              selectedFile != null 
+                                  ? Icons.file_present
+                                  : Icons.upload_file,
+                              size: 30,
+                              color: Colors.grey,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              selectedFile != null
+                                  ? (selectedFile!.name.length > 20
+                                      ? '${selectedFile!.name.substring(0, 20)}...'
+                                      : selectedFile!.name)
+                                  : 'Tambah File',
+                              style: TextStyle(fontSize: 14),
+                            ),
+                          ],
                         ),
-                        child: selectedImage != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.file(
-                                  selectedImage!,
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.add_photo_alternate,
-                                      size: 40, color: Colors.grey),
-                                  Text('Ubah Foto Tugas'),
-                                ],
-                              ),
                       ),
                     ),
                     SizedBox(height: 10),
@@ -151,6 +157,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                       'deadline': deadline,
                       'description': description,
                       'image': selectedImage,
+                      'file': selectedFile, // Add this line
                     });
                   },
                   style: ElevatedButton.styleFrom(
@@ -172,6 +179,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         widget.task['deadline'] = result['deadline'];
         widget.task['description'] = result['description'];
         widget.task['image'] = result['image'];
+        widget.task['file'] = result['file']; // Add this line
       });
       widget.onTaskUpdated(widget.task); // Add this to notify parent
     }
@@ -196,6 +204,132 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (widget.task['image'] != null || widget.task['file'] != null)
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'File Tugas',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      if (widget.task['image'] != null)
+                        GestureDetector(
+                          onTap: _showFullImage,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(15),
+                            child: Image.file(
+                              widget.task['image'],
+                              width: double.infinity,
+                              height: 200,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        )
+                      else if (widget.task['file'] != null)
+                        Container(
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.file_present, color: Colors.blue),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: InkWell( // Wrap with InkWell
+                                  onTap: () async {
+                                    final file = widget.task['file'];
+                                    if (file != null) {
+                                      try {
+                                        final result = await OpenFile.open(file.path);
+                                        if (result.type != ResultType.done) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Tidak dapat membuka file: ${result.message}'),
+                                              behavior: SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Error: Tidak dapat membuka file'),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        widget.task['file'].name,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        '${(widget.task['file'].size / 1024).toStringAsFixed(2)} KB',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.open_in_new, color: Colors.blue), // Changed from download icon
+                                onPressed: () async {
+                                  final file = widget.task['file'];
+                                  if (file != null) {
+                                    try {
+                                      final result = await OpenFile.open(file.path);
+                                      if (result.type != ResultType.done) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Tidak dapat membuka file: ${result.message}'),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Error: Tidak dapat membuka file'),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            SizedBox(height: 20),
             if (widget.task['image'] != null)
               GestureDetector(
                 onTap: _showFullImage,
@@ -236,20 +370,19 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        Chip(
-                          label: Text(
-                            widget.task['checked'] ? 'Selesai' : 'Belum Selesai',
-                            style: TextStyle(color: Colors.white),
+                        if (widget.task['checked']) // Only show chip if task is checked
+                          Chip(
+                            label: Text(
+                              'Selesai',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            backgroundColor: Colors.green,
                           ),
-                          backgroundColor: widget.task['checked']
-                              ? Colors.green
-                              : Colors.orange,
-                        ),
                       ],
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Kelas: ${widget.className}',
+                      '${widget.className}',
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey[600],

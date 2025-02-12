@@ -1,5 +1,5 @@
-import 'package:aplikasi_ortu/MUSYRIF/Grade/grade_page.dart';
 import 'package:aplikasi_ortu/PAGES/Absen/absensi_page.dart';
+import 'package:aplikasi_ortu/PAGES/Grade/class_selection_page.dart';
 import 'package:aplikasi_ortu/PAGES/Laporan_guru/laporan_guru.dart';
 import 'package:aplikasi_ortu/PAGES/Home/Home_Guru.dart';
 import 'package:aplikasi_ortu/PAGES/Profil/profil.dart';
@@ -129,7 +129,7 @@ class _DashboardPageState extends State<homeview> with SingleTickerProviderState
             });
           },
           children: [
-            GradePage(),
+            ClassSelectionPage(),
             LaporanGuru(onNewsAdded: (news) {}),
             DashboardPage(),
             AbsensiKelasPage(),    
